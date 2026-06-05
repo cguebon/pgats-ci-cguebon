@@ -1,0 +1,95 @@
+name: "Pipeline CI - Azure DevOps"
+
+# TRIGGER
+# trigger: none  →  disparo apenas manual
+
+trigger: none
+
+
+# POOL — Máquina virtual onde o pipeline roda
+# Equivalente ao: runs-on: ubuntu-latest  (GitHub Actions)
+
+pool:
+  vmImage: ubuntu-latest
+
+# VARIABLES — Variáveis reutilizáveis na pipeline
+
+variables:
+  NODE_VERSION: "22.x"
+
+# JOBS
+
+jobs:
+  - job: e2e_tests
+    displayName: "Testes E2E com Playwright"
+
+    steps:
+
+      # ── PASSO 1: Clone do repositório ─────────────────────
+      # Equivalente ao: uses: actions/checkout@v4
+      - checkout: self
+        displayName: "Clone do repositório"
+
+      # ── PASSO 2: Instalar Node.js ─────────────────────────
+      # Equivalente ao: uses: actions/setup-node@v4
+      - task: NodeTool@0
+        displayName: "Instalando Node.js $(NODE_VERSION)"
+        inputs:
+          versionSpec: $(NODE_VERSION)
+
+      # ── PASSO 3: Instalar Yarn ────────────────────────────
+      # Equivalente ao: run: npm install -g yarn
+      - script: npm install -g yarn
+        displayName: "Instalando Yarn"
+
+      # ── PASSO 4: Instalar dependências ─────────────────
+      # Equivalente ao: run: yarn
+      - script: yarn
+        displayName: "Instalando dependências do projeto"
+
+      # ── PASSO 5: Instalar browsers do Playwright ──────
+      # --with-deps instala também as libs do sistema operacional
+      # Equivalente ao: run: yarn playwright install
+      - script: yarn playwright install --with-deps
+        displayName: "Instalando Browsers do Playwright"
+
+      # ── PASSO 6: Executar testes E2E ─────────────────────
+      # Equivalente ao: run: yarn run e2e
+      # continueOnError: true → mesmo se testes falharem, o próximo
+      # passo (publicar relatório) ainda executa
+      - script: yarn run e2e
+        displayName: "Executando testes E2E"
+        continueOnError: true
+
+
+      # Este é o plugin nativo do Azure DevOps para relatórios.
+      # Ele lê o arquivo results.xml (formato JUnit gerado pelo
+      # Playwright) e exibe um dashboard visual na tela do pipeline
+      # com: total de testes, passou/falhou, duração, detalhes.
+
+      
+      - task: PublishTestResults@2
+        displayName: "📊 Publicando Relatório de Testes"
+        # condition: always() → executa MESMO SE o passo anterior falhou
+        # Garante que o relatório apareça mesmo com testes falhando
+        condition: always()
+        inputs:
+          # Formato do arquivo de resultado (JUnit = padrão universal)
+          testResultsFormat: "JUnit"
+          # Caminho do arquivo gerado pelo Playwright
+          testResultsFiles: "results.xml"
+          # Nome que aparece no dashboard do Azure DevOps
+          testRunTitle: "Playwright E2E Tests"
+          # Falhar o pipeline se houver testes com falha
+          failTaskOnFailedTests: true
+
+      # ── PASSO 8: Publicar artefatos (screenshots de falhas) ──
+      # Publica as screenshots de testes que falharam como artefato
+      # para download direto na interface do Azure DevOps
+      - task: PublishBuildArtifacts@1
+        displayName: "📸 Publicando Screenshots de Falhas"
+        condition: always()
+        inputs:
+          pathToPublish: "test-results"
+          artifactName: "playwright-screenshots"
+          publishLocation: "Container"

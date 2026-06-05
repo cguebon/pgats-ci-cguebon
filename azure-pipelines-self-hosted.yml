@@ -1,0 +1,50 @@
+name: "Pipeline CI - Self-Hosted Agent"
+
+trigger: none
+
+pool:
+  name: Default  
+
+jobs:
+  - job: e2e_tests_local
+    displayName: "Testes E2E (Self-Hosted)"
+
+    steps:
+
+      - checkout: self
+        displayName: "Clone do repositório"
+
+      - task: NodeTool@0
+        displayName: "Instalando Node.js 22.x"
+        inputs:
+          versionSpec: "22.x"
+
+      - script: npm install -g yarn
+        displayName: "Instalando Yarn"
+
+      - script: yarn
+        displayName: "Instalando dependências"
+
+      - script: yarn playwright install --with-deps
+        displayName: "Instalando Browsers do Playwright"
+
+      - script: yarn run e2e
+        displayName: "Executando testes E2E"
+        continueOnError: true
+
+      - task: PublishTestResults@2
+        displayName: "Publicando Relatório de Testes"
+        condition: always()
+        inputs:
+          testResultsFormat: "JUnit"
+          testResultsFiles: "results.xml"
+          testRunTitle: "Playwright E2E Tests (Self-Hosted)"
+          failTaskOnFailedTests: true
+
+      - task: PublishBuildArtifacts@1
+        displayName: "Publicando Screenshots"
+        condition: always()
+        inputs:
+          pathToPublish: "test-results"
+          artifactName: "playwright-screenshots-local"
+          publishLocation: "Container"
