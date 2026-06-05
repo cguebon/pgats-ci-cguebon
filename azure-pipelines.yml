@@ -32,10 +32,10 @@ jobs:
 
       # ── PASSO 2: Instalar Node.js ─────────────────────────
       # Equivalente ao: uses: actions/setup-node@v4
-      - task: NodeTool@0
+      - task: UseNode@1
         displayName: "Instalando Node.js $(NODE_VERSION)"
         inputs:
-          versionSpec: $(NODE_VERSION)
+          version: $(NODE_VERSION)
 
       # ── PASSO 3: Instalar Yarn ────────────────────────────
       # Equivalente ao: run: npm install -g yarn
@@ -69,7 +69,7 @@ jobs:
 
       
       - task: PublishTestResults@2
-        displayName: "📊 Publicando Relatório de Testes"
+        displayName: "Publicando Relatório de Testes"
         # condition: always() → executa MESMO SE o passo anterior falhou
         # Garante que o relatório apareça mesmo com testes falhando
         condition: always()
@@ -87,7 +87,7 @@ jobs:
       # Publica as screenshots de testes que falharam como artefato
       # para download direto na interface do Azure DevOps
       - task: PublishBuildArtifacts@1
-        displayName: "📸 Publicando Screenshots de Falhas"
+        displayName: "Publicando Screenshots de Falhas"
         condition: always()
         inputs:
           pathToPublish: "test-results"
